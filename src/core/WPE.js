@@ -3,6 +3,8 @@ import Wifi from './Wifi.js';
 
 const CONNECTION_TIMEOUT = 15000
 const WIFI_CONNECTION_TIMEOUT = 30000
+const WIFI_MAX_RETRY_COUNT = 5;
+const WIFI_PLUGIN_ACTIVATION_TIMEOUT = 1000;
 
 export default class WPE {
     constructor(host, port, stage) {
@@ -55,7 +57,8 @@ export default class WPE {
                 }
             }
         });
-
+        
+        this._wifiRetry = 0;
         this.check()
         setTimeout(this._noConnectionAfterTime.bind(this), CONNECTION_TIMEOUT);
     }
@@ -66,10 +69,16 @@ export default class WPE {
     _noConnectionAfterTime() {
         console.log('_noConnectionAfterTime')
         if (this._state === this.STATES.NOIP) {
-            if (this._wifiPlugin === undefined)
-                this._updateUIState('NoConnection');
-            else
-                this._checkAvailableWifiConfigs()
+            if (this._wifiPlugin === undefined) {
+               if (this._wifiRetry < WIFI_MAX_RETRY_COUNT) {
+                   setTimeout(this._noConnectionAfterTime.bind(this), WIFI_PLUGIN_ACTIVATION_TIMEOUT);
+                   this._wifiRetry++;
+               } else {
+                   this._wifiRetry = 0;
+                   this._updateUIState('NoConnection');
+               }
+            } else
+               this._checkAvailableWifiConfigs()
         }
     }
 
